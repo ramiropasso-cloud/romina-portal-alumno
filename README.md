@@ -113,21 +113,24 @@ apuntan a `CONFIG.portalUrl` en `export/app.js`.
 
 ## Próximos pasos (no incluidos en esta base)
 
-- **Panel para Romina**: dar de alta alumnas ya no requiere SQL
-  (`admin_create_student`, ver paso 2), pero planes, cobros y mensajes
-  todavía se cargan/confirman a mano por SQL. El siguiente paso natural
-  es la parte "APP DE LA COACH" del handoff
+- **Panel para Romina**: dar de alta alumnas (`admin_create_student`) y
+  cargar/asignar planes (`admin_upsert_plan`, `admin_assign_plan` —
+  ver `claudeviaclaudecode/README.md`) ya no requieren SQL, pero cobros
+  y mensajes todavía se confirman a mano. El siguiente paso natural es
+  la parte "APP DE LA COACH" del handoff
   (`design_handoff_romina_garino_app/README.md`) para que ella misma
-  arme planes, confirme cobros y responda el chat sin tocar Supabase.
+  confirme cobros y responda el chat sin tocar Supabase.
 - **Mercado Pago personalizado**: el botón "Pagar con Mercado Pago" hoy
   usa un único link fijo (`CONFIG.mercadoPagoLink`), no genera un cobro
   por el monto exacto de cada alumna. Pasar a Checkout Pro o
   suscripciones de Mercado Pago (requiere backend) para automatizarlo
   del todo, incluyendo marcar el pago como confirmado solo.
-- **"Tu semana" con días asignados**: el plan guarda bloques de
-  ejercicios pero no qué día de la semana corresponde cada uno; para
-  mostrar una vista semanal (Lun–Dom con estado Hecho/Hoy/Pendiente)
-  hace falta sumar ese dato al modelo de `plans.blocks`.
+- **Días con nombre real de la semana**: cada plan rota por sus días
+  (`plans.days`, `students.current_day_index`) en el orden en que
+  vienen definidos, pero no sabe que "hoy es martes" — la alumna avanza
+  al siguiente día del plan recién cuando marca el anterior como hecho,
+  no por calendario. Si hace falta fijar días concretos (Lun/Mié/Vie),
+  hay que sumar ese dato.
 - **Cargas (PRs) y % de adherencia**: no hay todavía un lugar para
   cargar el peso levantado por ejercicio, así que Progreso no puede
   mostrar "Sentadilla +12 kg" ni un % de adherencia real — hoy solo
