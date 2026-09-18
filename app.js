@@ -1,8 +1,8 @@
 // ── Config: completar con los datos de tu proyecto Supabase ──
 // (Project Settings → API, en supabase.com)
 const CONFIG = {
-  supabaseUrl: 'https://TU-PROYECTO.supabase.co',
-  supabaseAnonKey: 'TU-ANON-KEY',
+  supabaseUrl: 'https://yreszdtnksnlxkzuakrs.supabase.co',
+  supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlyZXN6ZHRua3NubHhrenVha3JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NDUzMjUsImV4cCI6MjEwNTMyMTMyNX0.19DjEYrhOLW6LjyRHJ1P1sZh7fiJYvpHaFmKwuHMaMk',
   coachName: 'Romina Garino',
   // Link de cobro de Mercado Pago. Por ahora es genérico (no personalizado
   // por alumno/a ni por monto) — ver README → "Próximos pasos".
