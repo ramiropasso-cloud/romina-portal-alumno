@@ -30,12 +30,35 @@ Cuatro pestañas, tema oscuro, siguiendo los tokens de
    };
    ```
 
-## 2. Cargar planes y alumnos
+## 2. Cargar alumnas (alta rápida, sin SQL)
 
-Por ahora se cargan a mano desde el **SQL Editor** de Supabase (no hay
-todavía un panel para que Romina lo haga sola — ver "Próximos pasos").
+Después de correr `supabase-schema.sql`, activá el alta rápida UNA vez
+(cambiando la contraseña de ejemplo por la tuya — ver el bloque
+"Cómo activar el alta rápida" al pie del mismo archivo):
 
-Ejemplo, un plan y una alumna con cuota:
+```sql
+insert into admin_secret (id, code_hash) values (1, crypt('TU-CONTRASEÑA', gen_salt('bf')));
+```
+
+De ahí en más, para dar de alta a una alumna alcanza con **nombre +
+teléfono** (el código de 4 dígitos se genera solo) llamando a la
+función `admin_create_student` — por ejemplo desde el SQL Editor:
+
+```sql
+select * from admin_create_student(
+  'TU-CONTRASEÑA', 'Camila Ferreyra', '5491122334455'
+);
+```
+
+Esto devuelve el `id` de la alumna y el `access_code` generado, para
+pasárselo por WhatsApp. `plan_id`, `fee` y `due_date` quedan en null
+hasta que le asignes un plan (ver abajo) — no hace falta completarlos
+al darla de alta.
+
+## 3. Cargar planes y asignarlos
+
+Los planes sí se cargan a mano por ahora (no forman parte del alta
+rápida):
 
 ```sql
 insert into plans (title, level, weeks, summary, blocks) values (
@@ -46,17 +69,14 @@ insert into plans (title, level, weeks, summary, blocks) values (
   ]}]'
 );
 
-insert into students (name, phone, access_code, plan_id, fee, due_date) values (
-  'Camila Ferreyra', '5491122334455', '4821',
-  (select id from plans where title = 'Full Body 3 días'),
-  40000, current_date + 30
-);
+update students set
+  plan_id = (select id from plans where title = 'Full Body 3 días'),
+  fee = 40000,
+  due_date = current_date + 30
+where phone = '5491122334455';
 ```
 
-El `access_code` (4 dígitos) se lo pasás vos a la alumna por WhatsApp,
-como ya hacen con el link de pago.
-
-## 3. Confirmar pagos y responder mensajes
+## 4. Confirmar pagos y responder mensajes
 
 Todavía no hay panel para la coach, así que estas dos acciones también
 se hacen desde el **SQL Editor** (ver el pie de `supabase-schema.sql`
@@ -68,41 +88,37 @@ para los comandos exactos):
 - **Responder un mensaje**: insertar una fila en `messages` con
   `sender = 'coach'`.
 
-## 4. Ver el sitio en local
+## 5. Ver el sitio en local
 
 Abrí `index.html` con la extensión **Live Server** de VS Code (clic
 derecho → *Open with Live Server*). No necesita `npm install` ni build.
 
 Ingresá el teléfono (`1122334455`, sin el `549`, o completo — se
-normaliza) y el código que cargaste en el paso 2.
+normaliza) y el código que te devolvió `admin_create_student`.
 
-## 5. Publicar
+## 6. Publicar
 
-Cualquier hosting estático: Netlify (arrastrar la carpeta), Vercel, o
-un repo de GitHub nuevo con GitHub Pages.
+Ya está publicado con GitHub Pages (repo `romina-portal-alumno`, rama
+`main`), con dominio propio `app.rominagarino.com` (CNAME en el DNS de
+`rominagarino.com`, registro `app` → `ramiropasso-cloud.github.io.`).
+Cualquier push a `main` lo actualiza solo. Si el certificado HTTPS del
+dominio propio todavía no está listo, la URL de respaldo siempre
+funciona: `https://ramiropasso-cloud.github.io/romina-portal-alumno/`.
 
-Para colgarlo de `app.rominagarino.com`:
-1. En el hosting elegido, agregá el dominio custom `app.rominagarino.com`.
-2. En el DNS del dominio (donde esté comprado `rominagarino.com`),
-   agregá un registro **CNAME**: `app` → lo que te indique el hosting.
-   (Esto es aparte del CNAME que ya usa GitHub Pages para el sitio
-   principal en el apex `rominagarino.com`.)
-
-## 6. Enlazar desde el sitio principal
+## 7. Enlazar desde el sitio principal
 
 Ya está hecho: `export/index.html` tiene un link "Mi plan" en el nav y
 una sección debajo de los planes con el botón "Entrar a mi plan", que
-apuntan a `CONFIG.portalUrl` en `export/app.js`. Actualizar esa URL
-cuando el portal esté publicado en su subdominio real.
+apuntan a `CONFIG.portalUrl` en `export/app.js`.
 
 ## Próximos pasos (no incluidos en esta base)
 
-- **Panel para Romina**: hoy los planes, alumnos, pagos y mensajes se
-  cargan/confirman a mano por SQL. El siguiente paso natural es la
-  parte "APP DE LA COACH" del handoff
+- **Panel para Romina**: dar de alta alumnas ya no requiere SQL
+  (`admin_create_student`, ver paso 2), pero planes, cobros y mensajes
+  todavía se cargan/confirman a mano por SQL. El siguiente paso natural
+  es la parte "APP DE LA COACH" del handoff
   (`design_handoff_romina_garino_app/README.md`) para que ella misma
-  cree alumnos, arme planes, confirme cobros y responda el chat sin
-  tocar Supabase.
+  arme planes, confirme cobros y responda el chat sin tocar Supabase.
 - **Mercado Pago personalizado**: el botón "Pagar con Mercado Pago" hoy
   usa un único link fijo (`CONFIG.mercadoPagoLink`), no genera un cobro
   por el monto exacto de cada alumna. Pasar a Checkout Pro o

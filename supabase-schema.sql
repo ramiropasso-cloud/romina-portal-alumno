@@ -57,6 +57,14 @@ create table messages (
   read_at timestamptz -- se completa cuando la coach lee el mensaje del alumno (o viceversa)
 );
 
+-- guarda (hasheada) la contraseña que protege el alta rápida de alumnas
+-- (admin_create_student más abajo). Nunca se guarda en texto plano.
+create table admin_secret (
+  id int primary key default 1,
+  code_hash text not null,
+  check (id = 1)
+);
+
 -- ── Seguridad ───────────────────────────────────────────
 -- El anon key queda expuesto en el HTML, así que las tablas NO se leen
 -- directo: todo pasa por funciones (security definer) que reciben el
@@ -67,7 +75,8 @@ alter table plans enable row level security;
 alter table workout_logs enable row level security;
 alter table payments enable row level security;
 alter table messages enable row level security;
--- Sin policies para anon => bloqueado por defecto en las 5 tablas.
+alter table admin_secret enable row level security;
+-- Sin policies para anon => bloqueado por defecto en las 6 tablas.
 
 -- login: valida teléfono + código, devuelve el alumno (sin el código)
 create or replace function login_student(p_phone text, p_code text)
@@ -176,7 +185,36 @@ as $$
   where student_id = p_student_id and sender = 'coach' and read_at is null;
 $$;
 
+-- alta rápida de alumnas: genera el código de 4 dígitos sola y crea la
+-- fila en students. Requiere la contraseña de administración (ver abajo
+-- "Cómo activar el alta rápida") para que no quede abierto a cualquiera
+-- que lea este archivo (es un repo público).
+create or replace function admin_create_student(
+  p_admin_pass text, p_name text, p_phone text,
+  p_plan_id uuid default null, p_fee numeric default null, p_due_date date default null
+)
+returns table (id uuid, access_code text)
+language plpgsql security definer
+as $$
+declare
+  v_code text;
+  v_id uuid;
+begin
+  if not exists (select 1 from admin_secret where code_hash = crypt(p_admin_pass, code_hash)) then
+    raise exception 'No autorizado';
+  end if;
+
+  v_code := lpad((floor(random() * 10000))::int::text, 4, '0');
+  insert into students (name, phone, access_code, plan_id, fee, due_date)
+  values (p_name, p_phone, v_code, p_plan_id, p_fee, p_due_date)
+  returning students.id into v_id;
+
+  return query select v_id, v_code;
+end;
+$$;
+
 grant execute on function login_student(text, text) to anon;
+grant execute on function admin_create_student(text, text, text, uuid, numeric, date) to anon;
 grant execute on function get_my_plan(uuid) to anon;
 grant execute on function get_my_status(uuid) to anon;
 grant execute on function save_workout_log(uuid, text, jsonb, text) to anon;
@@ -186,7 +224,16 @@ grant execute on function get_my_thread(uuid) to anon;
 grant execute on function send_my_message(uuid, text) to anon;
 grant execute on function mark_thread_read(uuid) to anon;
 
+-- ── Cómo activar el alta rápida (admin_create_student) ──
+-- Corré esto UNA sola vez, cambiando 'CAMBIAME-2026' por tu propia
+-- contraseña (no hace falta que sea complejísima, solo que no esté en
+-- este archivo público). A partir de ahí, para dar de alta a una
+-- alumna alcanza con llamar a admin_create_student con esa contraseña,
+-- nombre y teléfono — el código de 4 dígitos se genera solo.
+-- insert into admin_secret (id, code_hash) values (1, crypt('CAMBIAME-2026', gen_salt('bf')));
+
 -- ── Cómo dar de alta a un alumno (a mano, desde el SQL Editor) ──
+-- (alternativa a admin_create_student, por si alguna vez hace falta)
 -- insert into plans (title, level, weeks, summary, blocks) values (
 --   'Full Body 3 días', 'Intermedio', 8, 'Fuerza general, 3 sesiones semanales',
 --   '[{"name":"Bloque A","items":[{"exercise":"Sentadilla","sets":"4 x 8","note":"RIR 2 · descanso 90\""}]}]'
