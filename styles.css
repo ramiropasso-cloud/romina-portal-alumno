@@ -258,10 +258,12 @@ h1 {
 .plan-box-title { margin: 6px 0; font-family: Archivo, sans-serif; font-weight: 800; font-size: 19px; }
 .hr { height: 2px; background: var(--divider-2); margin: 14px 0; border: none; }
 .plan-box-block {
-  display: flex; justify-content: space-between; font-size: 13px;
+  display: flex; justify-content: space-between; align-items: center; font-size: 13px;
   padding: 8px 0; border-bottom: 1px solid var(--divider-1);
 }
-.sub-inline { opacity: .55; }
+.plan-box-block.is-next { font-weight: 600; }
+.plan-box-block .tag { margin-left: 8px; padding: 3px 8px; }
+.sub-inline { opacity: .55; flex: none; }
 
 .cuota-box { margin: 24px 18px 0; padding: 18px; border: 2px solid var(--divider-2); }
 .cuota-top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }

@@ -7,11 +7,13 @@ create extension if not exists pgcrypto;
 
 create table plans (
   id uuid primary key default gen_random_uuid(),
-  title text not null,
+  title text not null unique,
   level text not null,
   weeks int not null,
   summary text,
-  blocks jsonb not null default '[]', -- [{ name, items:[{ exercise, sets, note }] }]
+  -- [{ day_label, blocks:[{ name, items:[{ exercise, sets, note }] }] }]
+  -- un plan tiene N días; cada alumna rota por ellos (ver students.current_day_index)
+  days jsonb not null default '[]',
   created_at timestamptz not null default now()
 );
 
@@ -19,9 +21,10 @@ create table students (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   phone text not null unique,       -- formato: 549 + código de área + número, sin espacios
-  access_code text not null,        -- 4 dígitos, la coach lo define al dar de alta
+  access_code text not null,        -- 4 dígitos, generado por admin_create_student
   plan_id uuid references plans(id),
-  plan_assigned_at timestamptz not null default now(), -- para calcular "semana N de M"; actualizar a mano si se reasigna el plan
+  plan_assigned_at timestamptz not null default now(), -- para calcular "semana N de M"; se resetea al asignar plan
+  current_day_index int not null default 0,            -- qué día del plan (plans.days) le toca hoy
   fee numeric,                      -- cuota mensual, ej. 40000
   due_date date,                    -- próximo vencimiento
   created_at timestamptz not null default now()
@@ -57,8 +60,8 @@ create table messages (
   read_at timestamptz -- se completa cuando la coach lee el mensaje del alumno (o viceversa)
 );
 
--- guarda (hasheada) la contraseña que protege el alta rápida de alumnas
--- (admin_create_student más abajo). Nunca se guarda en texto plano.
+-- guarda (hasheada) la contraseña que protege las funciones admin_*
+-- (alta de alumnas, carga de planes). Nunca se guarda en texto plano.
 create table admin_secret (
   id int primary key default 1,
   code_hash text not null,
@@ -88,12 +91,23 @@ as $$
   where s.phone = p_phone and s.access_code = p_code;
 $$;
 
--- trae el plan asignado a un alumno ya logueado (por su id de sesión)
+-- trae el día que le toca hoy a la alumna dentro de su plan (rota por
+-- students.current_day_index) más la lista completa de días para el
+-- resumen de "Mi plan"
 create or replace function get_my_plan(p_student_id uuid)
-returns table (id uuid, title text, level text, weeks int, summary text, blocks jsonb)
+returns table (
+  id uuid, title text, level text, weeks int, summary text,
+  day_label text, day_index int, day_count int, blocks jsonb, all_days jsonb
+)
 language sql security definer
 as $$
-  select p.id, p.title, p.level, p.weeks, p.summary, p.blocks
+  select
+    p.id, p.title, p.level, p.weeks, p.summary,
+    (p.days -> (s.current_day_index % greatest(jsonb_array_length(p.days), 1)) ->> 'day_label'),
+    (s.current_day_index % greatest(jsonb_array_length(p.days), 1)),
+    jsonb_array_length(p.days),
+    (p.days -> (s.current_day_index % greatest(jsonb_array_length(p.days), 1)) -> 'blocks'),
+    p.days
   from plans p
   join students s on s.plan_id = p.id
   where s.id = p_student_id;
@@ -125,15 +139,29 @@ as $$
   where s.id = p_student_id;
 $$;
 
--- guarda el entrenamiento del día marcado por el alumno
+-- guarda el entrenamiento del día marcado por el alumno y avanza al
+-- siguiente día del plan (rotación circular)
 create or replace function save_workout_log(
   p_student_id uuid, p_day_label text, p_completed jsonb, p_rpe text
 )
 returns void
-language sql security definer
+language plpgsql security definer
 as $$
+declare
+  v_day_count int;
+begin
   insert into workout_logs (student_id, day_label, completed_items, rpe)
   values (p_student_id, p_day_label, p_completed, p_rpe);
+
+  select greatest(jsonb_array_length(p.days), 1) into v_day_count
+  from students s join plans p on p.id = s.plan_id
+  where s.id = p_student_id;
+
+  if v_day_count is not null then
+    update students set current_day_index = (current_day_index + 1) % v_day_count
+    where id = p_student_id;
+  end if;
+end;
 $$;
 
 -- historial reciente del alumno, para la pantalla de Progreso
@@ -187,8 +215,8 @@ $$;
 
 -- alta rápida de alumnas: genera el código de 4 dígitos sola y crea la
 -- fila en students. Requiere la contraseña de administración (ver abajo
--- "Cómo activar el alta rápida") para que no quede abierto a cualquiera
--- que lea este archivo (es un repo público).
+-- "Cómo activar las funciones admin_*") para que no quede abierto a
+-- cualquiera que lea este archivo (es un repo público).
 create or replace function admin_create_student(
   p_admin_pass text, p_name text, p_phone text,
   p_plan_id uuid default null, p_fee numeric default null, p_due_date date default null
@@ -213,8 +241,61 @@ begin
 end;
 $$;
 
+-- crea o actualiza un plan completo (por título) con sus días. Pensado
+-- para que se llame automáticamente cuando se actualiza el contenido
+-- de los planes (ver planes_entrenamiento.md), sin tocar Supabase.
+create or replace function admin_upsert_plan(
+  p_admin_pass text, p_title text, p_level text, p_weeks int, p_summary text, p_days jsonb
+)
+returns table (id uuid)
+language plpgsql security definer
+as $$
+declare
+  v_id uuid;
+begin
+  if not exists (select 1 from admin_secret where code_hash = crypt(p_admin_pass, code_hash)) then
+    raise exception 'No autorizado';
+  end if;
+
+  insert into plans (title, level, weeks, summary, days)
+  values (p_title, p_level, p_weeks, p_summary, p_days)
+  on conflict (title) do update set
+    level = excluded.level, weeks = excluded.weeks,
+    summary = excluded.summary, days = excluded.days
+  returning plans.id into v_id;
+
+  return query select v_id;
+end;
+$$;
+
+-- asigna un plan (por título) a una alumna (por teléfono) y reinicia
+-- su rotación de días al Día 1.
+create or replace function admin_assign_plan(
+  p_admin_pass text, p_phone text, p_title text,
+  p_fee numeric default null, p_due_date date default null
+)
+returns void
+language plpgsql security definer
+as $$
+begin
+  if not exists (select 1 from admin_secret where code_hash = crypt(p_admin_pass, code_hash)) then
+    raise exception 'No autorizado';
+  end if;
+
+  update students set
+    plan_id = (select id from plans where title = p_title),
+    fee = coalesce(p_fee, fee),
+    due_date = coalesce(p_due_date, due_date),
+    plan_assigned_at = now(),
+    current_day_index = 0
+  where phone = p_phone;
+end;
+$$;
+
 grant execute on function login_student(text, text) to anon;
 grant execute on function admin_create_student(text, text, text, uuid, numeric, date) to anon;
+grant execute on function admin_upsert_plan(text, text, text, int, text, jsonb) to anon;
+grant execute on function admin_assign_plan(text, text, text, numeric, date) to anon;
 grant execute on function get_my_plan(uuid) to anon;
 grant execute on function get_my_status(uuid) to anon;
 grant execute on function save_workout_log(uuid, text, jsonb, text) to anon;
@@ -224,20 +305,14 @@ grant execute on function get_my_thread(uuid) to anon;
 grant execute on function send_my_message(uuid, text) to anon;
 grant execute on function mark_thread_read(uuid) to anon;
 
--- ── Cómo activar el alta rápida (admin_create_student) ──
+-- ── Cómo activar las funciones admin_* (alta de alumnas, carga de planes) ──
 -- Corré esto UNA sola vez, cambiando 'CAMBIAME-2026' por tu propia
 -- contraseña (no hace falta que sea complejísima, solo que no esté en
--- este archivo público). A partir de ahí, para dar de alta a una
--- alumna alcanza con llamar a admin_create_student con esa contraseña,
--- nombre y teléfono — el código de 4 dígitos se genera solo.
+-- este archivo público).
 -- insert into admin_secret (id, code_hash) values (1, crypt('CAMBIAME-2026', gen_salt('bf')));
 
--- ── Cómo dar de alta a un alumno (a mano, desde el SQL Editor) ──
--- (alternativa a admin_create_student, por si alguna vez hace falta)
--- insert into plans (title, level, weeks, summary, blocks) values (
---   'Full Body 3 días', 'Intermedio', 8, 'Fuerza general, 3 sesiones semanales',
---   '[{"name":"Bloque A","items":[{"exercise":"Sentadilla","sets":"4 x 8","note":"RIR 2 · descanso 90\""}]}]'
--- );
+-- ── Cómo dar de alta a una alumna sin admin_create_student ──
+-- (alternativa manual, por si alguna vez hace falta)
 -- insert into students (name, phone, access_code, plan_id, fee, due_date) values (
 --   'Camila Ferreyra', '5491122334455', '4821',
 --   (select id from plans where title = 'Full Body 3 días'),

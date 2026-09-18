@@ -171,6 +171,7 @@ function initHoy() {
 
   const doneToday = new Set();
   let selectedRpe = null;
+  let currentDayLabel = '';
 
   async function load() {
     const { data, error } = await sb.rpc('get_my_plan', { p_student_id: session.id });
@@ -179,7 +180,15 @@ function initHoy() {
       blocksEl.innerHTML = '<p class="sub" style="padding:0 18px;">Todavía no tenés un plan asignado. Escribile a Romina desde el Chat.</p>';
       return;
     }
-    renderBlocks(data[0].blocks || []);
+    const plan = data[0];
+    currentDayLabel = plan.day_label || '';
+    const dayEl = document.getElementById('day-label');
+    if (dayEl) {
+      dayEl.textContent = plan.day_count
+        ? `${plan.day_label} · Día ${plan.day_index + 1} de ${plan.day_count}`
+        : plan.day_label || '';
+    }
+    renderBlocks(plan.blocks || []);
     document.getElementById('sensation').hidden = false;
   }
 
@@ -196,12 +205,12 @@ function initHoy() {
         const row = document.createElement('div');
         row.className = 'item';
         row.innerHTML = `
-          <div class="item-check" role="button" aria-label="Marcar ${item.exercise}"></div>
+          <div class="item-check" role="button" aria-label="Marcar ${escapeHtml(item.exercise)}"></div>
           <div class="item-body">
-            <div class="item-name">${item.exercise}</div>
-            ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
+            <div class="item-name">${escapeHtml(item.exercise)}</div>
+            ${item.note ? `<div class="item-note">${escapeHtml(item.note)}</div>` : ''}
           </div>
-          <div class="item-sets">${item.sets || ''}</div>
+          <div class="item-sets">${escapeHtml(item.sets || '')}</div>
         `;
         const check = row.querySelector('.item-check');
         check.addEventListener('click', () => {
@@ -229,7 +238,7 @@ function initHoy() {
     btn.disabled = true;
     const { error } = await sb.rpc('save_workout_log', {
       p_student_id: session.id,
-      p_day_label: document.getElementById('header-plan-title').textContent,
+      p_day_label: currentDayLabel || document.getElementById('header-plan-title').textContent,
       p_completed: Array.from(doneToday),
       p_rpe: selectedRpe,
     });
@@ -322,15 +331,21 @@ function initMiPlan() {
       boxEl.innerHTML = '<p class="sub">Todavía no tenés un plan asignado.</p>';
     } else {
       const plan = planData[0];
+      const days = plan.all_days || [];
       boxEl.innerHTML = `
         <p class="kicker">${plan.level.toUpperCase()} · ${plan.weeks} SEMANAS</p>
         <h3 class="plan-box-title">${escapeHtml(plan.title)}</h3>
         <p class="sub">${escapeHtml(plan.summary || '')}</p>
         <div class="hr"></div>
-        ${(plan.blocks || []).map((b) => `
-          <div class="plan-box-block">
-            <span>${escapeHtml(b.name)}</span><span class="sub-inline">${b.items.length} ejercicios</span>
-          </div>`).join('')}
+        ${days.map((d, i) => {
+          const exerciseCount = (d.blocks || []).reduce((n, b) => n + b.items.length, 0);
+          const isToday = i === plan.day_index;
+          return `
+          <div class="plan-box-block${isToday ? ' is-next' : ''}">
+            <span>${escapeHtml(d.day_label)}${isToday ? ' <span class="tag tag-outline">Próximo</span>' : ''}</span>
+            <span class="sub-inline">${exerciseCount} ejercicios</span>
+          </div>`;
+        }).join('')}
       `;
     }
 
