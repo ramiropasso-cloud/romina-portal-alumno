@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Romina Garino · Coaching</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main class="onboard">
+  <div class="onboard-head">
+    <p class="kicker">ROMINA GARINO · COACHING</p>
+  </div>
+
+  <!-- Paso 1: teléfono -->
+  <section class="step" id="step-phone">
+    <h1>Ingresá tu teléfono</h1>
+    <p class="sub">Usá el mismo número que le diste a Romina para darte de alta.</p>
+    <input class="input" type="tel" id="phone" placeholder="549 11 2233 4455" inputmode="tel">
+    <p class="error" id="phone-error"></p>
+  </section>
+
+  <!-- Paso 2: código -->
+  <section class="step" id="step-code" hidden>
+    <h1>Ingresá tu código</h1>
+    <p class="sub" id="code-sub">Te lo pasó Romina por WhatsApp.</p>
+    <input class="input input-code" type="text" id="code" maxlength="4" inputmode="numeric" placeholder="····">
+    <p class="error" id="code-error"></p>
+  </section>
+
+  <div class="onboard-foot">
+    <button class="btn-secondary" id="btn-back" hidden>Atrás</button>
+    <button class="btn-primary" id="btn-next">Continuar</button>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

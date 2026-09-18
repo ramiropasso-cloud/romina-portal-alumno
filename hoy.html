@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hoy · Romina Garino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-body">
+
+<header class="app-header" id="app-header">
+  <div class="header-top">
+    <p class="kicker" id="header-week">SEMANA — DE —</p>
+    <a href="#" class="link-ghost" id="btn-logout">Cerrar sesión</a>
+  </div>
+  <h1 id="header-plan-title">—</h1>
+  <p class="sub" id="header-status">Con Romina Garino · —</p>
+</header>
+
+<p class="section-label">Entrenamiento de hoy</p>
+<main class="app-main" id="blocks">
+  <!-- los bloques de ejercicios se generan en app.js -->
+</main>
+
+<div class="sensation" id="sensation" hidden>
+  <p class="section-label">¿Cómo te sentiste hoy?</p>
+  <div class="segmented" id="rpe-group">
+    <button data-rpe="facil">Fácil</button>
+    <button data-rpe="justo">Justo</button>
+    <button data-rpe="duro">Duro</button>
+  </div>
+</div>
+
+<div class="app-foot">
+  <button class="btn-primary btn-full" id="btn-done">Marcar entrenamiento como hecho</button>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<nav class="tabbar">
+  <a href="hoy.html" class="tab active">Hoy</a>
+  <a href="progreso.html" class="tab">Progreso</a>
+  <a href="mi-plan.html" class="tab">Mi plan</a>
+  <a href="chat.html" class="tab">Chat</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

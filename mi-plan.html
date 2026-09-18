@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi plan · Romina Garino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="app-body">
+
+<header class="app-header" id="app-header">
+  <div class="header-top">
+    <p class="kicker" id="header-week">SEMANA — DE —</p>
+    <a href="#" class="link-ghost" id="btn-logout">Cerrar sesión</a>
+  </div>
+  <h1 id="header-plan-title">—</h1>
+  <p class="sub" id="header-status">Con Romina Garino · —</p>
+</header>
+
+<main class="app-main">
+  <p class="section-label">Tu plan</p>
+  <div class="plan-summary-box" id="plan-summary-box"></div>
+
+  <p class="section-label">Tu cuota</p>
+  <div class="cuota-box" id="cuota-box">
+    <div class="cuota-top">
+      <span id="cuota-amount">—</span>
+      <span class="tag tag-neutral" id="cuota-tag">—</span>
+    </div>
+    <p id="cuota-due">—</p>
+    <button class="btn-primary btn-full" id="btn-pay-mp">Pagar con Mercado Pago</button>
+    <button class="btn-secondary btn-full" id="btn-notify-transfer">Avisar transferencia</button>
+  </div>
+</main>
+
+<div class="toast" id="toast" hidden></div>
+
+<nav class="tabbar">
+  <a href="hoy.html" class="tab">Hoy</a>
+  <a href="progreso.html" class="tab">Progreso</a>
+  <a href="mi-plan.html" class="tab active">Mi plan</a>
+  <a href="chat.html" class="tab">Chat</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
