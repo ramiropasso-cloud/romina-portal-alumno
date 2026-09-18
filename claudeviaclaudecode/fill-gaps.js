@@ -17,9 +17,13 @@ function basicoBlock(dayIdx, nameStartsWith) {
   return JSON.parse(JSON.stringify(block.items)); // clon
 }
 
-// mapa: [plan, día, nombre del bloque vacío] → de qué día de Home Básico
-// tomar los ítems (0=Día1 Fuerza, 1=Día2 Aeróbico, 2=Día3 Fullbody)
+// mapa: [plan, día, nombre del bloque vacío o "igual que Plan 1"] → de qué
+// día de Home Básico tomar los ítems (0=Día1 Fuerza, 1=Día2 Aeróbico, 2=Día3 Fullbody)
 const fills = [
+  ['Home Pro', 'DÍA 1', 'Entrada en calor', 0, 'Entrada en calor'],
+  ['Home Pro', 'DÍA 2', 'Entrada en calor', 1, 'Entrada en calor'],
+  ['Home Pro', 'DÍA 2', 'Vuelta a la calma', 1, 'Vuelta a la calma'],
+  ['Home Pro', 'DÍA 3', 'Entrada en calor', 2, 'Entrada en calor'],
   ['Home Pro', 'DÍA 3', 'Vuelta a la calma', 2, 'Vuelta a la calma'],
   ['Home Pro', 'DÍA 4', 'Vuelta a la calma', 2, 'Vuelta a la calma'],
   ['Battle Fox Online', 'DÍA 1', 'Vuelta a la calma', 0, 'Vuelta a la calma'],
@@ -31,16 +35,21 @@ const fills = [
   ['Battle Fox Online', 'DÍA 6', 'Entrada en calor', 1, 'Entrada en calor'],
 ];
 
+function needsFill(items) {
+  return items.length === 0 || items.some((i) => /^Igual que/i.test(i.exercise));
+}
+
 let filled = 0;
 fills.forEach(([planTitle, dayPrefix, blockPrefix, basicoDayIdx, basicoBlockPrefix]) => {
   const plan = plans.find((p) => p.title === planTitle);
   const day = plan.days.find((d) => d.day_label.startsWith(dayPrefix));
   const block = day.blocks.find((b) => b.name.startsWith(blockPrefix));
-  if (block.items.length > 0) {
+  if (!needsFill(block.items)) {
     console.log(`(ya tenía contenido, no toco) ${planTitle} — ${day.day_label} — ${block.name}`);
     return;
   }
   block.items = basicoBlock(basicoDayIdx, basicoBlockPrefix);
+  block.name = block.name.replace(/\s*—\s*igual que plan 1\s*$/i, '');
   filled++;
   console.log(`Completado: ${planTitle} — ${day.day_label} — ${block.name} (${block.items.length} ítems, de Home Básico Día ${basicoDayIdx + 1})`);
 });
