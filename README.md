@@ -113,13 +113,11 @@ apuntan a `CONFIG.portalUrl` en `export/app.js`.
 
 ## Próximos pasos (no incluidos en esta base)
 
-- **Panel para Romina**: dar de alta alumnas (`admin_create_student`) y
-  cargar/asignar planes (`admin_upsert_plan`, `admin_assign_plan` —
-  ver `claudeviaclaudecode/README.md`) ya no requieren SQL, pero cobros
-  y mensajes todavía se confirman a mano. El siguiente paso natural es
-  la parte "APP DE LA COACH" del handoff
-  (`design_handoff_romina_garino_app/README.md`) para que ella misma
-  confirme cobros y responda el chat sin tocar Supabase.
+- **Panel para Romina**: ✅ construido en el repo aparte
+  `romina-portal-coach` (Hoy, Alumnos, Ficha, Cobros, Planes en solo
+  lectura) — alta de alumnas, pagos y mensajes ya no requieren SQL.
+  Sigue pendiente el editor visual de planificación por bloques (hoy
+  los planes se cargan por el pipeline `claudeviaclaudecode/`).
 - **Mercado Pago personalizado**: el botón "Pagar con Mercado Pago" hoy
   usa un único link fijo (`CONFIG.mercadoPagoLink`), no genera un cobro
   por el monto exacto de cada alumna. Pasar a Checkout Pro o
